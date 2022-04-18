@@ -2,9 +2,14 @@ import praw
 import pickle
 import time
 import re
+import smtplib,ssl
 
 pickleFile = "myPickleFile.pk"
-
+passwordPickle = "passwordPickle.pk"
+sender_email = "markelgamedeals@gmail.com"
+receiver_email = "dirkdedekenmcr@gmail.com"
+smtp_server = "smtp.gmail.com"
+sort_order = {"Steam":0,"Epic Games":1}
 
 class freeGame:
     def __init__(self, category, title, redditLink):
@@ -78,11 +83,50 @@ def getFromReddit():
     print("There were new submissions that haven't been checked yet")
     return freeGames
 
+def getCategoryBodyText(category):
+    return "[" + str(category).upper() + "]\n"
 
-def sendGames(freeGames):
+def getRestBodyText(title,link):
+    return title + "\nLink: https://www.reddit.com" + link + "\n"
+
+def buildMailBody(freeGames):
+    body = ""
+    cat = ""
     for game in freeGames:
-        print(game.title)
+        body += getCategoryBodyText(game.cat)
+        if not cat.__eq__(game.cat):
+            cat = game.cat
+            body += getCategoryBodyText(game.cat)
+        body += getRestBodyText(game.title,game.reddit)
+    return body
+def sendGames(freeGames):
+    port = 465  # For SSL
+    password = ""
+    with open(passwordPickle, 'rb+') as pick:
+        try:
+            password = pickle.load(pick)
+        except EOFError:
+            password = input("Please insert the password of the email markelgamedeals@gmail.com")
+            with open(passwordPickle,'wb') as pick2:
+                pickle.dump(password,pick2)
 
+    freeGames.sort(key=lambda x: sort_order.get(x.cat,len(sort_order)))
+    body = buildMailBody(freeGames)
+    # Create a secure SSL context
+    context = ssl.create_default_context()
+    message = """\
+    Subject: Free games update [GameDeals]
+    Well hello there,
+    There have been some changes on the GameDeals subreddit.""" + body
+    print(message)
+
+    with smtplib.SMTP(smtp_server, port) as server:
+        server.login(sender_email, password)
+        server.ehlo()  # Can be omitted
+        server.starttls(context=context)
+        server.ehlo()  # Can be omitted
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email, message)
 
 def main():
     freeGames = getFromReddit()
@@ -96,3 +140,6 @@ main()
 exit(0)
 
 # docs: https://praw.readthedocs.io/en/stable/code_overview/models/submission.html?highlight=submission#praw.models.Submission
+
+#gmail acces, gaat ge wrs op een gegeven moment eens moeten doen vrees ik
+#https://developers.google.com/gmail/api/quickstart/python
