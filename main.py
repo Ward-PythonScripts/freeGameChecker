@@ -1,6 +1,7 @@
 import praw
 import pickle
 import time
+import re
 
 pickleFile = "myPickleFile.pk"
 
@@ -27,15 +28,31 @@ def loadUTC():
             return 0
 
 
+def containsException(target):
+    if re.search("Free Weekend", target, re.IGNORECASE):
+        # steam free weekend trigger -> not important
+        return True
+    control = "free"
+    match = target.lower().find(control)
+    if match == -1:
+        return False
+    else:
+        if target[match-1].isalpha() or target[match+len(control)].isalpha():
+            #the character is a letter thus meaning that free is used in a word like freedom
+            return True
+        return False
+
+
 def checkSubmission(submission):
     # get category
     s = str(submission.title)
-    if s.__contains__("Free") or s.__contains__("FREE") or s.__contains__("free"):
-        category = s[s.find("[")+len("["):s.rfind("]")]
-        print(s)
-        target = "[" + str(category) + "]"
+    if s.__contains__("Free") or s.__contains__("FREE") or s.__contains__("free") or s.__contains__("100%"):
+        if containsException(s):
+            return None
+        category = s[s.find("[") + len("["):s.rfind("]")]
+        target = "[" + str(category) + "] "
         title = str.replace(submission.title, target, "")
-        return freeGame(category,title,submission.permalink)
+        return freeGame(category, title, submission.permalink)
     else:
         return None
 
@@ -51,7 +68,7 @@ def getFromReddit():
         if submissions.created_utc > lastCheckTime:
             # file hasn't been checked before
             game = checkSubmission(submissions)
-            if not game is None:
+            if game is not None:
                 freeGames.append(game)
         else:
             # checked all new ones
@@ -61,9 +78,11 @@ def getFromReddit():
     print("There were new submissions that haven't been checked yet")
     return freeGames
 
+
 def sendGames(freeGames):
     for game in freeGames:
-        print(game.cat)
+        print(game.title)
+
 
 def main():
     freeGames = getFromReddit()
