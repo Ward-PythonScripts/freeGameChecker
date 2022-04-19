@@ -3,6 +3,7 @@ import pickle
 import time
 import re
 import smtplib,ssl
+import os
 
 pickleFile = "myPickleFile.pk"
 passwordPickle = "passwordPickle.pk"
@@ -10,6 +11,7 @@ sender_email = "markelgamedeals@gmail.com"
 receiver_email = "dirkdedekenmcr@gmail.com"
 smtp_server = "smtp.gmail.com"
 sort_order = {"Steam":0,"Epic Games":1}
+path = ""#os.getcwd() + "/"
 
 class freeGame:
     def __init__(self, category, title, redditLink):
@@ -19,14 +21,14 @@ class freeGame:
 
 
 def storeUTC():
-    with open(pickleFile, 'wb+') as pick:
+    with open(path+pickleFile, 'wb+') as pick:
         pickle.dump(0, pick)
         # pickle.dump(int(time.time()), pick)
     return
 
 
 def loadUTC():
-    with open(pickleFile, 'rb') as pick:
+    with open(path+pickleFile, 'rb+') as pick:
         try:
             return pickle.load(pick)
         except EOFError:
@@ -39,7 +41,7 @@ def containsException(target):
         return True
     control = "free"
     match = target.lower().find(control)
-    if match == -1:
+    if (match == -1) or (match-1)<0 or (match+len(control))>(len(target)-1):
         return False
     else:
         if target[match-1].isalpha() or target[match+len(control)].isalpha():
@@ -107,7 +109,7 @@ def sendGames(freeGames):
             password = pickle.load(pick)
         except EOFError:
             password = input("Please insert the password of the email markelgamedeals@gmail.com")
-            with open(passwordPickle,'wb') as pick2:
+            with open(path+passwordPickle,'wb') as pick2:
                 pickle.dump(password,pick2)
 
     freeGames.sort(key=lambda x: sort_order.get(x.cat,len(sort_order)))
@@ -120,13 +122,18 @@ def sendGames(freeGames):
     There have been some changes on the GameDeals subreddit.""" + body
     print(message)
 
-    with smtplib.SMTP(smtp_server, port) as server:
-        server.login(sender_email, password)
-        server.ehlo()  # Can be omitted
-        server.starttls(context=context)
-        server.ehlo()  # Can be omitted
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message)
+    file = open(path+"dump.txt","a+")
+    file.write(body)
+    file.close()
+
+
+    # with smtplib.SMTP(smtp_server, port) as server:
+    #     server.login(sender_email, password)
+    #     server.ehlo()  # Can be omitted
+    #     server.starttls(context=context)
+    #     server.ehlo()  # Can be omitted
+    #     server.login(sender_email, password)
+    #     server.sendmail(sender_email, receiver_email, message)
 
 def main():
     freeGames = getFromReddit()
